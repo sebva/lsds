@@ -8,15 +8,15 @@ set style line 4 lt 1 lc rgb "#000000" lw 7 # black
 set style line 5 lt 1 lc rgb "#CD00CD" lw 7 # purple
 set style line 7 lt 3 lc rgb "#000000" lw 7 # black, dashed line
 
-set output "OUTPUT.pdf"
-set title "TITLE OF THE PLOT"
+set output "anti_entropy.pdf"
+set title "Anti-entropy"
 
 # indicates the labels
-set xlabel "X LABEL (unit)"
-set ylabel "Y LABEL (unit)"
+set xlabel "Time (s)"
+set ylabel "Infected nodes (%)"
 
 # set the grid on
-set grid x,y
+#set grid x,y
 
 # set the key, options are top/bottom and left/right
 set key top left
@@ -25,7 +25,6 @@ set key top left
 set yrange [0:100] # example of a closed range (points outside will not be displayed)
 set xrange [0:] # example of a range closed on one side only, the max will determined automatically
 
-plot "data.txt" u ($1):(100*$3) with lines linestyle 1 title "TITLE 1",\
-     "data.txt" u ($1):(100*$3) with lines linestyle 2 title "TITLE 2"
+plot "data.txt" u ($1):(100*$3) with lines linestyle 1 title "Anti-entropy"
 
 # $1 is column 1. You can do arithmetics on the values of the columns

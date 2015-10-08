@@ -29,10 +29,7 @@ current_cycle = 0
 --functions
 
 function anti_entropy()
-  while true do
-    rpc.call(select_partner(), { "anti_entropy_receive", job.position, infected, true })
-    events.sleep(anti_entropy_period)
-  end
+  rpc.call(select_partner(), { "anti_entropy_receive", job.position, infected, true })
 end
 
 function anti_entropy_receive(sender_id, received, do_answer)
@@ -93,7 +90,7 @@ function main()
   log:print("waiting for "..desync_wait.." to desynchronize")
   events.sleep(desync_wait)  
   
-  events.thread(anti_entropy)
+  events.periodic(anti_entropy, anti_entropy_period)
   
   -- this thread will be in charge of killing the node after max_time seconds
   events.thread(terminator)
