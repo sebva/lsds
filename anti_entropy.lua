@@ -45,7 +45,10 @@ function anti_entropy_receive(sender_id, received, do_answer)
 end
 
 function select_partner()
-  local id = math.random(#job.nodes())
+  local id = job.position
+  while id == job.position do
+    id = math.random(#job.nodes())
+  end
   return job.nodes()[id]
 end
 
