@@ -39,7 +39,8 @@ function anti_entropy_receive(sender_id, received, do_answer)
   local was_infected = infected
   infected = select_to_keep(received)
   if was_infected == 'no' and infected == 'yes' then
-    log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
+    -- log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
+    log:print('i_am_infected')
   end
   if do_answer then
     rpc.call(job.nodes()[sender_id], { "anti_entropy_receive", job.position, infected, false })
