@@ -26,7 +26,42 @@ max_time = 120 -- we do not want to run forever ...
 infected = "no"
 current_cycle = 0
 
--- TODO here insert your functions from the gossip framework
+--functions
+
+function anti_entropy()
+  while true do
+    rpc.call(select_partner(), { "anti_entropy_receive", job.position, infected, true })
+    events.sleep(anti_entropy_period)
+  end
+end
+
+function anti_entropy_receive(sender_id, received, do_answer)
+  local was_infected = infected
+  infected = select_to_keep(received)
+  if was_infected == 'no' and infected == 'yes' then
+    log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
+  end
+  if do_answer then
+    rpc.call(job.nodes()[sender_id], { "anti_entropy_receive", job.position, infected, false })
+  end
+end
+
+function select_partner()
+  local id = math.random(#job.nodes())
+  return job.nodes()[id]
+end
+
+function select_to_send()
+  return 'yes'
+end
+
+function select_to_keep(received)
+  if infected == 'yes' or received == 'yes' then
+    return 'yes'
+  else
+    return 'no'
+  end
+end
 
 --
 --
@@ -57,8 +92,7 @@ function main()
   log:print("waiting for "..desync_wait.." to desynchronize")
   events.sleep(desync_wait)  
   
-  -- TODO: here, you should insert the command 
-  --       that starts the gossiping activity
+  events.thread(anti_entropy)
   
   -- this thread will be in charge of killing the node after max_time seconds
   events.thread(terminator)
