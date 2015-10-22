@@ -32,7 +32,7 @@ buffered_h = nil -- hops-to-live value for buffered messages
 function rm_notify(h)
   log:print("node "..job.position.." ("..infected..") was notified with hops "..h.." (HTL="..HTL..")")
 
-  -- TODO: infect if necessary
+  infected = "yes"
 
   if (h < HTL) or (buffered and ((h + 1) < buffered_h)) then
     buffered = true
@@ -47,12 +47,37 @@ function rm_activeThread()
   if buffered then
     log:print(job.position.." proceeds to forwarding to "..f.." peers")
 
+    local peers = select_f_from_i(f, job.nodes())
+    for key, node in pairs(peers) do
+      rpc.call(node, {'rm_notify', buffered_h})
+    end
     -- TODO: select f destination nodes and notify each of
     -- them via a rpc to notify(buffered_h)
 
     buffered = false
     buffered_h = nil
   end
+end
+
+-- Reservoir sampling algorithm
+function select_f_from_i(f, i)
+  local r = {}
+  for j = 1, f do
+    r[j] = table.remove(i)
+  end
+
+  local elements_seen = f
+  while #i > 0 do
+    elements_seen = elements_seen + 1
+    local j = math.random(elements_seen)
+    if j <= f then
+      r[j] = table.remove(i)
+    else
+      table.remove(i)
+    end
+  end
+
+  return r
 end
 
 function terminator()
