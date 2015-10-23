@@ -2,18 +2,18 @@
 use strict;
 use warnings FATAL => 'all';
 
-my $filepath = 'e70f1e15a52eb9ddc6ccc578b0d19b14.txt';
+my $filepath = 'fd5d6f3b317a28351bb676abe96d2c39.txt';
 
 my $first = 1;
 my $start_time;
 my @to_write = ();
-my $total_nodes = 0;
+my $total_nodes = 40;
 
 open(my $input_file, '<', $filepath);
 while(my $line = <$input_file>) {
     if($line =~ /^(\d+):(\d+):(\d+)\.(\d+) \((\d+)\)  i_am_infected/) {
         my ($hour, $min, $sec, $msec, $node_id) = ($1, $2, $3, $4, $5);
-        $total_nodes++;
+        #$total_nodes++;
         if($first) {
             $first = 0;
             $start_time = convert_time_to_msec($hour, $min, $sec, $msec);
@@ -23,7 +23,7 @@ while(my $line = <$input_file>) {
 }
 close($input_file);
 
-open(my $output_file, '>', 'data.txt');
+open(my $output_file, '>', 'rm.txt');
 my $infected_nodes = 1;
 foreach my $elapsed (@to_write) {
     print $output_file "$elapsed\t$infected_nodes\t" . ($infected_nodes / $total_nodes) . "\n";

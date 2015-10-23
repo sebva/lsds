@@ -18,7 +18,7 @@ rpc.server(job.me.port)
 
 -- constants
 rumor_mongering_period = 10
-max_time = 120 -- we do not want to run forever ...
+max_time = 40 -- we do not want to run forever ...
 HTL = 3
 f = 2
 
@@ -32,7 +32,11 @@ buffered_h = nil -- hops-to-live value for buffered messages
 function rm_notify(h)
   log:print("node "..job.position.." ("..infected..") was notified with hops "..h.." (HTL="..HTL..")")
 
-  infected = "yes"
+  if infected == "no" then
+    -- log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
+    log:print('i_am_infected')
+    infected = "yes"
+  end
 
   if (h < HTL) or (buffered and ((h + 1) < buffered_h)) then
     buffered = true
@@ -47,8 +51,10 @@ function rm_activeThread()
   if buffered then
     log:print(job.position.." proceeds to forwarding to "..f.." peers")
 
-    local peers = select_f_from_i(f, job.nodes())
-    for key, node in pairs(peers) do
+    local all_nodes_but_i = job.nodes()
+    table.remove(all_nodes_but_i, node_id)
+    local selected_peers = select_f_from_i(f, all_nodes_but_i)
+    for key, node in pairs(selected_peers) do
       rpc.call(node, {'rm_notify', buffered_h})
     end
     -- TODO: select f destination nodes and notify each of
@@ -97,7 +103,7 @@ function main()
     infected = "yes"
     buffered = true
     buffered_h = 0
-    log:print(job.position.." i_am_infected")
+    log:print("i_am_infected")
     desync_wait = 0
   end
   log:print("waiting for "..desync_wait.." to desynchronize")
