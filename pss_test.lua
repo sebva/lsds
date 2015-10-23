@@ -4,19 +4,28 @@ require"splay.base"
 view = {}
 
 --constants
+node_id = 0
 EXCH = 4
 C = 8
 H = 2
 S = 2
-SEL = 'tail'
+SEL = 'rand'
+ACTIVE_INTERVAL = 5
+VIEW_OUTPUT_INTERVAL = 15
+MAX_TIME = 120
 
 function select_partner()
     if SEL == 'rand' then
-        return misc.shuffle(view)[1]
+        local shuffled_view = misc.shuffle(view)
+        local partner = shuffled_view[1]
+        if partner.id == node_id then
+            partner = shuffled_view[2]
+        end
+        return partner
     elseif SEL == 'tail' then
         local largest
         for k, v in pairs(view) do
-            if largest == nil or v.age > largest.age then
+            if (largest == nil or v.age > largest.age) and v.id ~= node_id then
                 largest = v
             end
         end
@@ -26,20 +35,20 @@ end
 
 function select_to_send()
     local to_send = {}
-    table.insert(to_send, {age = 0, peer = job.me, id = node_id})
+    table.insert(to_send, {age = 0, id = node_id})
     view = misc.shuffle(view)
     local oldest_index
-    for i = 1, H do
-        for j = 1, #view - i + 1 do
+    for i = 0, H - 1 do
+        for j = 1, #view - i do
             if oldest_index == nil or view[j].age > view[oldest_index].age then
                 oldest_index = j
             end
         end
         local oldest_peer = table.remove(view, oldest_index)
-        table.insert(oldest_peer)
+        table.insert(view, oldest_peer)
     end
     for i = 1, EXCH -1 do
-        table.insert(to_send, shuffled_view[i])
+        table.insert(to_send, view[i])
     end
     return to_send
 end
@@ -71,9 +80,10 @@ function select_to_keep(received)
     -- Remove H oldest items
     local view_size = #view
     local oldest_index
+    local oldest_age = 0
     for i = 1, math.min(H, view_size - C) do
         for k, v in pairs(view) do
-            if oldest_index == nil or v.age > view[oldest_index].age then
+            if oldest_index == nil or v.age > oldest_age then
                 oldest_index = k
             end
         end
@@ -81,7 +91,8 @@ function select_to_keep(received)
     end
 
     -- Remove S head items
-    for i = 1, math.min(S, #view - C) do
+    view_size = #view
+    for i = 1, math.min(S, view_size - C) do
         table.remove(view, 1)
     end
     view = select_f_from_i(C, view)
@@ -98,7 +109,7 @@ end
 function active_thread()
     local partner = select_partner()
     local buffer = select_to_send()
-    local received = rpc.call(partner, {'passive_thread', buffer})
+    local received = rpc.call(partner.peer, {'passive_thread', buffer})
     select_to_keep(received)
     for k,v in pairs(view) do
         v.age = v.age + 1
@@ -111,8 +122,28 @@ function passive_thread(received)
     return buffer
 end
 
+function display_peers(peers)
+    log:print('node '..node_id)
+    for k, v in pairs(peers) do
+        log:print(v.id .. ' ' .. v.age)
+    end
+end
+
+function view_output()
+    local log_line = 'VIEW_CONTENT '..node_id
+    for k, v in pairs(view) do
+        log_line = log_line .. ' ' .. v.id
+    end
+    log:print(log_line)
+end
+
 -- Reservoir sampling algorithm
 function select_f_from_i(f, i)
+    return misc.random_pick(i, f)
+    --[[
+    if f >= #i then
+        return i
+    end
     local r = {}
     for j = 1, f do
         r[j] = table.remove(i)
@@ -130,23 +161,74 @@ function select_f_from_i(f, i)
     end
 
     return r
+    ]]
 end
 
-function print_table(t)
-    for k,v in pairs(t) do
-        print('['..k..'] = '..v.age)
+function terminator()
+    events.sleep(MAX_TIME)
+    log:print("FINAL: node "..job.position)
+    os.exit()
+end
+
+function main()
+    events.periodic(view_output ,VIEW_OUTPUT_INTERVAL)
+    math.randomseed(job.position*os.time())
+    -- wait for all nodes to start up (conservative)
+    events.sleep(2)
+    -- desynchronize the nodes
+    local desync_wait = (ACTIVE_INTERVAL * math.random())
+    log:print("waiting for "..desync_wait.." to desynchronize")
+    events.sleep(desync_wait)
+
+    local all_nodes_view = {}
+    for k, v in pairs(job.nodes()) do
+        table.insert(all_nodes_view, {age=0, peer=v, id=k})
     end
+    view = select_f_from_i(C, all_nodes_view)
+
+    view_output()
+
+    --display_peers(select_to_send())
+
+    -- start gossiping!
+    events.periodic(active_thread ,ACTIVE_INTERVAL)
+    events.thread(terminator)
 end
 
 view = {
-    {id=1, age=math.random(0, 5)},
-    {id=5, age=math.random(0, 5)},
-    {id=3, age=math.random(0, 5)},
-    {id=8, age=math.random(0, 5)},
-    {id=6, age=math.random(0, 5)},
-    {id=2, age=math.random(0, 5)},
-    {id=4, age=math.random(0, 5)},
-    {id=7, age=math.random(0, 5)},
+    {id='R', age=2},
+    {id='L', age=5},
+    {id='Z', age=4},
+    {id='Q', age=7},
+    {id='A', age=1},
+    {id='M', age=3},
+    {id='W', age=3},
+    {id='E', age=6},
 }
 
-print_table(view)
+EXCH=4
+H=1
+S=2
+node_id='P'
+
+view2 = {
+    {id='N', age=1},
+    {id='L', age=7},
+    {id='V', age=2},
+    {id='B', age=2},
+    {id='U', age=5},
+    {id='F', age=4},
+    {id='D', age=3},
+    {id='S', age=4},
+}
+
+display_peers(view)
+local send = select_to_send()
+display_peers(send)
+display_peers(view)
+view = view2
+node_id='Q'
+display_peers(view)
+local send2 = passive_thread(send)
+display_peers(view)
+display_peers(send2)
