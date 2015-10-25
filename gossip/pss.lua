@@ -18,6 +18,7 @@ rpc.server(job.me.port)
 
 -- variables
 view = {}
+view_lock = events.lock()
 
 --constants
 node_id = job.position
@@ -32,7 +33,9 @@ MAX_TIME = 120
 
 function select_partner()
     if SEL == 'rand' then
+        view_lock:lock();
         local shuffled_view = misc.shuffle(view)
+        view_lock:unlock();
         local partner = shuffled_view[1]
         if partner.id == node_id then
             partner = shuffled_view[2]
@@ -40,11 +43,13 @@ function select_partner()
         return partner
     elseif SEL == 'tail' then
         local largest
+        view_lock:lock();
         for k, v in pairs(view) do
             if (largest == nil or v.age > largest.age) and v.id ~= node_id then
                 largest = v
             end
         end
+        view_lock:unlock();
         return largest
     end
 end
@@ -52,6 +57,7 @@ end
 function select_to_send()
     local to_send = {}
     table.insert(to_send, {age = 0, peer = job.me, id = node_id})
+    view_lock:lock();
     view = misc.shuffle(view)
     local oldest_index
     for i = 0, H - 1 do
@@ -66,10 +72,12 @@ function select_to_send()
     for i = 1, EXCH -1 do
         table.insert(to_send, view[i])
     end
+    view_lock:unlock();
     return to_send
 end
 
 function select_to_keep(received)
+    view_lock:lock();
     for k, v in pairs(received) do
         table.insert(view, v)
     end
@@ -112,6 +120,7 @@ function select_to_keep(received)
         table.remove(view, 1)
     end
     view = select_f_from_i(C, view)
+    view_lock:unlock();
 end
 
 function desc_comp(a, b)
@@ -127,9 +136,11 @@ function active_thread()
     local buffer = select_to_send()
     local received = rpc.call(partner.peer, {'passive_thread', buffer})
     select_to_keep(received)
+    view_lock:lock();
     for k,v in pairs(view) do
         v.age = v.age + 1
     end
+    view_lock:unlock();
 end
 
 function passive_thread(received)
@@ -140,16 +151,20 @@ end
 
 function display_peers(peers)
     log:print('node '..node_id)
+    view_lock:lock();
     for k, v in pairs(view) do
         log:print(v.id .. ' ' .. v.peer.ip .. v.peer.port .. v.age)
     end
+    view_lock:unlock();
 end
 
 function view_output()
     local log_line = 'VIEW_CONTENT '..node_id
+    view_lock:lock();
     for k, v in pairs(view) do
         log_line = log_line .. ' ' .. v.id
     end
+    view_lock:unlock();
     log:print(log_line)
 end
 
@@ -187,7 +202,6 @@ function terminator()
 end
 
 function main()
-    events.periodic(view_output ,VIEW_OUTPUT_INTERVAL)
     math.randomseed(job.position*os.time())
     -- wait for all nodes to start up (conservative)
     events.sleep(2)
@@ -207,7 +221,8 @@ function main()
     --display_peers(select_to_send())
 
     -- start gossiping!
-    events.periodic(active_thread ,ACTIVE_INTERVAL)
+    events.periodic(active_thread, ACTIVE_INTERVAL)
+    events.periodic(view_output ,VIEW_OUTPUT_INTERVAL)
     events.thread(terminator)
 end
 
