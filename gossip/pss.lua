@@ -44,7 +44,7 @@ function select_partner()
     elseif SEL == 'tail' then
         local largest
         view_lock:lock();
-        for k, v in pairs(view) do
+        for k, v in ipairs(view) do
             if (largest == nil or v.age > largest.age) and v.id ~= node_id then
                 largest = v
             end
@@ -78,7 +78,7 @@ end
 
 function select_to_keep(received)
     view_lock:lock();
-    for k, v in pairs(received) do
+    for k, v in ipairs(received) do
         if v.id ~= node_id then
             table.insert(view, v)
         end
@@ -99,7 +99,7 @@ function select_to_keep(received)
     end
     -- Iterate in reverse, this way indices don't change
     table.sort(to_remove, desc_comp)
-    for k, v in pairs(to_remove) do
+    for k, v in ipairs(to_remove) do
         table.remove(view, v)
     end
 
@@ -108,7 +108,7 @@ function select_to_keep(received)
     local oldest_index
     local oldest_age = 0
     for i = 1, math.min(H, view_size - C) do
-        for k, v in pairs(view) do
+        for k, v in ipairs(view) do
             if oldest_index == nil or v.age > oldest_age then
                 oldest_index = k
             end
@@ -140,7 +140,7 @@ function active_thread()
     local received = rpc.call(partner.peer, {'passive_thread', buffer})
     select_to_keep(received)
     view_lock:lock();
-    for k,v in pairs(view) do
+    for k,v in ipairs(view) do
         v.age = v.age + 1
     end
     view_lock:unlock();
@@ -155,7 +155,7 @@ end
 function display_peers(peers)
     log:print('node '..node_id)
     view_lock:lock();
-    for k, v in pairs(view) do
+    for k, v in ipairs(view) do
         log:print(v.id .. ' ' .. v.peer.ip .. v.peer.port .. v.age)
     end
     view_lock:unlock();
@@ -164,7 +164,7 @@ end
 function view_output()
     local log_line = 'VIEW_CONTENT '..node_id
     view_lock:lock();
-    for k, v in pairs(view) do
+    for k, v in ipairs(view) do
         log_line = log_line .. ' ' .. v.id
     end
     view_lock:unlock();
@@ -214,7 +214,7 @@ function main()
     events.sleep(desync_wait)
 
     local all_nodes_view = {}
-    for k, v in pairs(job.nodes()) do
+    for k, v in ipairs(job.nodes()) do
         if k ~= node_id then
             table.insert(all_nodes_view, {age=0, peer=v, id=k})
         end
