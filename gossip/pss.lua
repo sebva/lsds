@@ -85,7 +85,7 @@ function select_to_keep(received)
     -- Remove duplicates
     local to_remove = {}
     for i = 1, #view do
-        for j = 1, #view do
+        for j = i, #view do
             if j ~= i and view[i].id == view[j].id then
                 if view[i].age > view[j].age then
                     table.insert(to_remove, i)
@@ -112,6 +112,7 @@ function select_to_keep(received)
             end
         end
         table.remove(view, oldest_index)
+        oldest_index = nil
     end
 
     -- Remove S head items
