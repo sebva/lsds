@@ -1,0 +1,96 @@
+\documentclass[11pt,a4paper,bibliography=totocnumbered]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[australian,american]{babel}
+%\usepackage{amsmath}
+%\usepackage{amsfonts}
+%\usepackage{amssymb}
+\usepackage[headsepline,footsepline]{scrlayer-scrpage}
+\usepackage{minted}
+%\usepackage{tabu}
+%\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{setspace}
+%\usepackage{graphicx}
+%\usepackage{pgfplots}
+\usepackage{url}
+\usepackage{titling}
+\usepackage[backend=biber,style=ieee,bibencoding=utf8,sorting=none]{biblatex}
+\usepackage{csquotes}
+\usepackage{pdfpages}
+%\usepackage{epstopdf}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{todonotes}
+\usepackage{pdflscape}
+\usepackage[hidelinks]{hyperref}
+
+%\usepackage{enumitem}
+
+%\pgfplotsset{width=12cm,height=6cm,compat=1.11}
+
+% Constants
+\def\mytitle{Gossip-based dissemination, Peer Sampling Service}
+\def\myauthor{Sébastien Vaucher}
+
+\pagestyle{scrheadings}
+
+\ihead{\mytitle}
+\chead{}
+\ohead{\myauthor}
+\cfoot{}
+\ifoot{Large-Scale Distributed Systems}
+\ofoot{\thepage}
+
+\posttitle{\end{center}\begin{center}\LARGE Large-Scale Distributed Systems\end{center}}
+
+\author{\myauthor\\ \href{mailto:sebastien.vaucher@unine.ch}{sebastien.vaucher@unine.ch}}
+\title{\huge \textbf{\mytitle}}
+
+\hypersetup{
+	pdftitle=\mytitle,
+	pdfauthor=\myauthor
+}
+
+\bibliography{gossip-report}
+
+\begin{document}
+
+\nocite{*}
+
+\begin{titlingpage}
+
+\begin{otherlanguage}{australian}
+\maketitle
+\end{otherlanguage}
+
+\begin{abstract}
+Abstract
+\end{abstract}
+
+\begin{figure}[b]
+\centering
+\subfloat{\includegraphics[height=1.5cm]{jmcs.png}}
+\qquad
+\subfloat{\includegraphics[height=1.8cm]{unine.pdf}}
+\end{figure}
+
+\end{titlingpage}
+
+\pagebreak
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\pagebreak
+
+\section{Introduction}
+
+Hello
+
+\begin{otherlanguage}{australian}
+\printbibliography
+\end{otherlanguage}
+
+\end{document}
