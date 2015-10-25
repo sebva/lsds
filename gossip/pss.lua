@@ -79,7 +79,9 @@ end
 function select_to_keep(received)
     view_lock:lock();
     for k, v in pairs(received) do
-        table.insert(view, v)
+        if v.id ~= node_id then
+            table.insert(view, v)
+        end
     end
 
     -- Remove duplicates
@@ -213,7 +215,9 @@ function main()
 
     local all_nodes_view = {}
     for k, v in pairs(job.nodes()) do
-        table.insert(all_nodes_view, {age=0, peer=v, id=k})
+        if k ~= node_id then
+            table.insert(all_nodes_view, {age=0, peer=v, id=k})
+        end
     end
     view = select_f_from_i(C, all_nodes_view)
 
