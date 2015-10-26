@@ -28,7 +28,7 @@ H = 2
 S = 2
 SEL = 'rand'
 ACTIVE_INTERVAL = 5
-VIEW_OUTPUT_INTERVAL = 15
+VIEW_OUTPUT_INTERVAL = 20
 MAX_TIME = 120
 
 function select_partner()
@@ -208,11 +208,8 @@ function main()
     math.randomseed(job.position*os.time())
     -- wait for all nodes to start up (conservative)
     events.sleep(2)
-    -- desynchronize the nodes
-    local desync_wait = (ACTIVE_INTERVAL * math.random())
-    log:print("waiting for "..desync_wait.." to desynchronize")
-    events.sleep(desync_wait)
 
+    -- initialize the view
     local all_nodes_view = {}
     for k, v in ipairs(job.nodes()) do
         if k ~= node_id then
@@ -221,13 +218,17 @@ function main()
     end
     view = select_f_from_i(C, all_nodes_view)
 
+    -- output and schedule view output
     view_output()
+    events.periodic(view_output ,VIEW_OUTPUT_INTERVAL)
 
-    --display_peers(select_to_send())
+    -- desynchronize the nodes
+    local desync_wait = (ACTIVE_INTERVAL * math.random())
+    log:print("waiting for "..desync_wait.." to desynchronize")
+    events.sleep(desync_wait)
 
     -- start gossiping!
     events.periodic(active_thread, ACTIVE_INTERVAL)
-    events.periodic(view_output ,VIEW_OUTPUT_INTERVAL)
     events.thread(terminator)
 end
 
