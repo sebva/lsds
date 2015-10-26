@@ -12,5 +12,5 @@ sleep 1
 for (( n=1;n<=$max;n++ ))
 do
   rm $n.log > /dev/null 2>&1
-  lua anti_entropy.lua $n $max &
+  lua gossip.lua $n $max &
 done

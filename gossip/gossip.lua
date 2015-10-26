@@ -1,5 +1,7 @@
 require"splay.base"
 rpc = require"splay.urpc"
+-- to use TCP RPC, replace previous by the following line
+-- rpc = require"splay.rpc"
 
 -- addition to allow local run
 if not job then
@@ -16,9 +18,14 @@ end
 
 rpc.server(job.me.port)
 
+-- algorithms
+do_rumor_mongering = true
+do_anti_entropy = true
+
 -- constants
+anti_entropy_period = 5 -- gossip every 20 seconds
 rumor_mongering_period = 10
-max_time = 40 -- we do not want to run forever ...
+max_time = 45 -- we do not want to run forever ...
 HTL = 3
 f = 2
 
@@ -27,15 +34,26 @@ infected = "no"
 current_cycle = 0
 buffered = false -- do I have buffered messages?
 buffered_h = nil -- hops-to-live value for buffered messages
+lock = events.lock() -- prevent both algorithms from self-destruction
 
+--functions
+
+function anti_entropy()
+  local remote_infected = rpc.call(select_partner(), { "anti_entropy_receive", infected })
+  select_to_keep(remote_infected)
+end
+
+function anti_entropy_receive(received)
+  select_to_keep(received)
+  return infected
+end
 
 function rm_notify(h)
   log:print("node "..job.position.." ("..infected..") was notified with hops "..h.." (HTL="..HTL..")")
 
   if infected == "no" then
     -- log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
-    log:print('i_am_infected')
-    infected = "yes"
+    select_to_keep('yes')
   else
     log:print('duplicate_received')
   end
@@ -54,40 +72,44 @@ function rm_activeThread()
     log:print(job.position.." proceeds to forwarding to "..f.." peers")
 
     local all_nodes_but_i = job.nodes()
-    table.remove(all_nodes_but_i, node_id)
-    local selected_peers = select_f_from_i(f, all_nodes_but_i)
+    table.remove(all_nodes_but_i, job.position)
+    local selected_peers = misc.random_pick(all_nodes_but_i, f)
     for key, node in pairs(selected_peers) do
       rpc.call(node, {'rm_notify', buffered_h})
     end
-    -- TODO: select f destination nodes and notify each of
-    -- them via a rpc to notify(buffered_h)
 
     buffered = false
     buffered_h = nil
   end
 end
 
--- Reservoir sampling algorithm
-function select_f_from_i(f, i)
-  local r = {}
-  for j = 1, f do
-    r[j] = table.remove(i)
-  end
 
-  local elements_seen = f
-  while #i > 0 do
-    elements_seen = elements_seen + 1
-    local j = math.random(elements_seen)
-    if j <= f then
-      r[j] = table.remove(i)
-    else
-      table.remove(i)
-    end
+function select_partner()
+  local id = job.position
+  while id == job.position do
+    id = math.random(#job.nodes())
   end
-
-  return r
+  return job.nodes()[id]
 end
 
+function select_to_send()
+  return 'yes'
+end
+
+function select_to_keep(received)
+  if infected == 'no' and received == 'yes' then
+    infected = 'yes'
+    log:print('i_am_infected')
+  end
+end
+
+--
+--
+--
+--
+--
+
+-- helping functions
 function terminator()
   events.sleep(max_time)
   log:print("FINAL: node "..job.position.." "..infected) 
@@ -95,26 +117,34 @@ function terminator()
 end
 
 function main()
+  -- init random number generator
   math.randomseed(job.position*os.time())
   -- wait for all nodes to start up (conservative)
   events.sleep(2)
   -- desynchronize the nodes
-  local desync_wait = (rumor_mongering_period * math.random())
+  local desync_wait = (anti_entropy_period * math.random())
   -- the first node is the source and is infected since the beginning
   if job.position == 1 then
     infected = "yes"
     buffered = true
     buffered_h = 0
-    log:print("i_am_infected")
+    log:print(job.position.." i_am_infected")
     desync_wait = 0
   end
   log:print("waiting for "..desync_wait.." to desynchronize")
   events.sleep(desync_wait)  
+
+  if do_anti_entropy then
+    events.periodic(anti_entropy, anti_entropy_period)
+  end
+  if do_rumor_mongering then
+    events.periodic(rm_activeThread, rumor_mongering_period)
+  end
   
-  -- start gossiping!
-  events.periodic(rm_activeThread,rumor_mongering_period)
+  -- this thread will be in charge of killing the node after max_time seconds
   events.thread(terminator)
 end  
 
-events.thread(main)
+events.thread(main)  
 events.run()
+
