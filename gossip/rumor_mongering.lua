@@ -36,6 +36,8 @@ function rm_notify(h)
     -- log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
     log:print('i_am_infected')
     infected = "yes"
+  else
+    log:print('duplicate_received')
   end
 
   if (h < HTL) or (buffered and ((h + 1) < buffered_h)) then
