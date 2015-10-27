@@ -3,6 +3,7 @@ rpc = require"splay.urpc"
 -- to use TCP RPC, replace previous by the following line
 -- rpc = require"splay.rpc"
 
+
 -- addition to allow local run
 if not job then
   -- can NOT be required in SPLAY deployments !  
@@ -23,9 +24,11 @@ do_rumor_mongering = true
 do_anti_entropy = true
 
 -- constants
+use_pss = true
+pss_init_duration = 60 -- amount of time the PSS is left alone in the beggining
 anti_entropy_period = 5 -- gossip every 20 seconds
 rumor_mongering_period = 10
-max_time = 45 -- we do not want to run forever ...
+max_time = 150 -- we do not want to run forever ...
 HTL = 3
 f = 2
 
@@ -39,12 +42,12 @@ lock = events.lock() -- prevent both algorithms from self-destruction
 --functions
 
 function anti_entropy()
-  local remote_infected = rpc.call(select_partner(), { "anti_entropy_receive", infected })
-  select_to_keep(remote_infected)
+  local remote_infected = rpc.call(ae_select_partner(), { "anti_entropy_receive", infected })
+  gossip_select_to_keep(remote_infected)
 end
 
 function anti_entropy_receive(received)
-  select_to_keep(received)
+  gossip_select_to_keep(received)
   return infected
 end
 
@@ -53,7 +56,7 @@ function rm_notify(h)
 
   if infected == "no" then
     -- log:print(os.date('%H:%M:%S') .. ' (' .. job.position .. ') i_am_infected')
-    select_to_keep('yes')
+    gossip_select_to_keep('yes')
   else
     log:print('duplicate_received')
   end
@@ -71,9 +74,7 @@ function rm_activeThread()
   if buffered then
     log:print(job.position.." proceeds to forwarding to "..f.." peers")
 
-    local all_nodes_but_i = job.nodes()
-    table.remove(all_nodes_but_i, job.position)
-    local selected_peers = misc.random_pick(all_nodes_but_i, f)
+    local selected_peers = rm_select_partner()
     for key, node in pairs(selected_peers) do
       rpc.call(node, {'rm_notify', buffered_h})
     end
@@ -83,20 +84,29 @@ function rm_activeThread()
   end
 end
 
-
-function select_partner()
-  local id = job.position
-  while id == job.position do
-    id = math.random(#job.nodes())
+function rm_select_partner()
+  if use_pss then
+    return get_n_peers(f)
+  else
+    local all_nodes_but_i = job.nodes()
+    table.remove(all_nodes_but_i, job.position)
+    return misc.random_pick(all_nodes_but_i, f)
   end
-  return job.nodes()[id]
 end
 
-function select_to_send()
-  return 'yes'
+function ae_select_partner()
+  if use_pss then
+    return get_n_peers(1)
+  else
+    local id = job.position
+    while id == job.position do
+      id = math.random(#job.nodes())
+    end
+    return job.nodes()[id]
+  end
 end
 
-function select_to_keep(received)
+function gossip_select_to_keep(received)
   if infected == 'no' and received == 'yes' then
     infected = 'yes'
     log:print('i_am_infected')
@@ -117,6 +127,10 @@ function terminator()
 end
 
 function main()
+  if use_pss then
+    events.sleep(pss_init_duration)
+  end
+
   -- init random number generator
   math.randomseed(job.position*os.time())
   -- wait for all nodes to start up (conservative)
@@ -131,8 +145,9 @@ function main()
     log:print(job.position.." i_am_infected")
     desync_wait = 0
   end
+
   log:print("waiting for "..desync_wait.." to desynchronize")
-  events.sleep(desync_wait)  
+  events.sleep(desync_wait)
 
   if do_anti_entropy then
     events.periodic(anti_entropy, anti_entropy_period)
@@ -143,7 +158,12 @@ function main()
   
   -- this thread will be in charge of killing the node after max_time seconds
   events.thread(terminator)
-end  
+end
+
+if use_pss then
+  require"pss"
+  events.thread(pss_main)
+end
 
 events.thread(main)  
 events.run()

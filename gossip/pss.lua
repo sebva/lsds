@@ -1,6 +1,7 @@
-require"splay.base"
-rpc = require"splay.urpc"
+--require"splay.base"
+--rpc = require"splay.urpc"
 
+--[[
 -- addition to allow local run
 if not job then
     -- can NOT be required in SPLAY deployments !
@@ -14,7 +15,8 @@ if not job then
     end
 end
 
-rpc.server(job.me.port)
+--]]
+--rpc.server(job.me.port)
 
 -- variables
 view = {}
@@ -30,6 +32,20 @@ SEL = 'rand'
 ACTIVE_INTERVAL = 5
 VIEW_OUTPUT_INTERVAL = 20
 MAX_TIME = 120
+
+function get_n_peers(n)
+    if n == 1 then
+        return view[math.random(#view)]['peer']
+    else
+        local ret = {}
+        local peers = misc.random_pick(view, n)
+        for k, v in ipairs(peers) do
+            local peer = v['peer']
+            table.insert(ret, peer)
+        end
+        return ret
+    end
+end
 
 function select_partner()
     if SEL == 'rand' then
@@ -204,7 +220,7 @@ function terminator()
     os.exit()
 end
 
-function main()
+function pss_main()
     math.randomseed(job.position*os.time())
     -- wait for all nodes to start up (conservative)
     events.sleep(2)
@@ -229,8 +245,5 @@ function main()
 
     -- start gossiping!
     events.periodic(active_thread, ACTIVE_INTERVAL)
-    events.thread(terminator)
+    --events.thread(terminator)
 end
-
-events.thread(main)
-events.run()
