@@ -37,19 +37,21 @@ foreach my $elapsed (@to_write) {
 }
 close($output_file);
 
-open($output_file, '>', $filepath . '.dup.plotdata');
-open(my $output_file_2, '>', $filepath . '.dupnodes.plotdata');
-my $duplicate_received = 1;
-print $output_file "0\t0\n";
-print $output_file_2 "0\t0\n";
-foreach my $duplicate (@duplicates) {
-	my ($elapsed, $nodes_infected) = ($duplicate->[0], $duplicate->[1]);
-    print $output_file "$elapsed\t$duplicate_received\n";
-    print $output_file_2 "$duplicate_received\t$nodes_infected\n";
-    $duplicate_received++;
+if($#duplicates) {
+	open($output_file, '>', $filepath . '.dup.plotdata');
+	open(my $output_file_2, '>', $filepath . '.dupnodes.plotdata');
+	my $duplicate_received = 1;
+	print $output_file "0\t0\n";
+	print $output_file_2 "0\t0\n";
+	foreach my $duplicate (@duplicates) {
+		my ($elapsed, $nodes_infected) = ($duplicate->[0], $duplicate->[1]);
+		print $output_file "$elapsed\t$duplicate_received\n";
+		print $output_file_2 "$duplicate_received\t$nodes_infected\n";
+		$duplicate_received++;
+	}
+	close($output_file);
+	close($output_file_2);
 }
-close($output_file);
-close($output_file_2);
 
 sub convert_time_to_msec {
     my ($hour, $min, $sec, $msec) = @_;
