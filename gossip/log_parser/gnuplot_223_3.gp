@@ -12,7 +12,7 @@ set output "../report/223_3.pdf"
 set title "Rumor mongering"
 
 # indicates the labels
-set xlabel "Duplicates"
+set xlabel "Duplicates (log scale)"
 set ylabel "Infected nodes"
 
 # set the grid on
