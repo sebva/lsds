@@ -3,6 +3,16 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[australian,american]{babel}
+
+% Figure captions in small font
+\makeatletter
+\let\MYcaption\@makecaption
+\makeatother
+\usepackage[font=footnotesize]{subcaption}
+\makeatletter
+\let\@makecaption\MYcaption
+\makeatother
+
 %\usepackage{amsmath}
 %\usepackage{amsfonts}
 %\usepackage{amssymb}
@@ -19,6 +29,7 @@
 %\usepackage[backend=biber,style=ieee,bibencoding=utf8,sorting=none]{biblatex}
 \usepackage{csquotes}
 \usepackage{pdfpages}
+
 %\usepackage{epstopdf}
 \usepackage{graphicx}
 \usepackage{subfig}
@@ -79,22 +90,26 @@
 
 \section{Introduction}
 
-This report presents the results obtained in the first assignment of the Large-Scale Distributed Systems course taught at the University of Neuchâtel. The goal of the assignment is the implement two gossip-based dissemination algorithms, namely anti-entropy and rumor mongering. A second part of the assignment consists in implementing a peer-sampling service. The implementation are programmed in the Lua programming language, and use the Splay framework.
+This report presents the results obtained in the first assignment of the Large-Scale Distributed Systems course taught at the University of Neuchâtel. The goal of the assignment is the implement two gossip-based dissemination algorithms, namely anti-entropy and rumor mongering. A second part of the assignment consists in implementing a peer-sampling service. The implementations are programmed in the Lua programming language, and use the Splay framework.
 
-\section{Anti-entropy}
+\section{Gossip-based dissemination}
 
-\section{Rumor mongering}
+\begin{figure}
 
-\begin{figure}[t]
-\label{fig:223-1}
-\includegraphics[scale=1]{223_1.pdf}
-\caption{Variation of the $HTL$ parameter}
-\end{figure}
+\centering
 
-\begin{figure}[b]
-\label{fig:223-2}
-\includegraphics[scale=1]{223_2.pdf}
-\caption{Variation of the $F$ parameter}
+\begin{subfigure}[b]{0.5\linewidth}
+	\centering
+	\includegraphics[width=\linewidth]{223_1.pdf}
+	\caption{Variation of the $HTL$ parameter}
+	\label{fig:223-1}
+\end{subfigure}
+\begin{subfigure}[b]{0.5\linewidth}
+	\centering
+	\includegraphics[width=\linewidth]{223_2.pdf}
+	\caption{Variation of the $F$ parameter}
+	\label{fig:223-2}
+\end{subfigure}
 \end{figure}
 
 \section{Annexes}
