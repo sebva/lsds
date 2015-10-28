@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper,bibliography=totocnumbered]{scrartcl}
+\documentclass[11pt,a4paper]{scrartcl}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -16,7 +16,7 @@
 %\usepackage{pgfplots}
 \usepackage{url}
 \usepackage{titling}
-\usepackage[backend=biber,style=ieee,bibencoding=utf8,sorting=none]{biblatex}
+%\usepackage[backend=biber,style=ieee,bibencoding=utf8,sorting=none]{biblatex}
 \usepackage{csquotes}
 \usepackage{pdfpages}
 %\usepackage{epstopdf}
@@ -53,8 +53,6 @@
 	pdfauthor=\myauthor
 }
 
-\bibliography{gossip-report}
-
 \begin{document}
 
 \nocite{*}
@@ -65,9 +63,8 @@
 \maketitle
 \end{otherlanguage}
 
-\begin{abstract}
-Abstract
-\end{abstract}
+\setcounter{tocdepth}{1}
+\tableofcontents
 
 \begin{figure}[b]
 \centering
@@ -80,17 +77,30 @@ Abstract
 
 \pagebreak
 
-\setcounter{tocdepth}{2}
-\tableofcontents
-
-\pagebreak
-
 \section{Introduction}
 
-Hello
+This report presents the results obtained in the first assignment of the Large-Scale Distributed Systems course taught at the University of Neuchâtel. The goal of the assignment is the implement two gossip-based dissemination algorithms, namely anti-entropy and rumor mongering. A second part of the assignment consists in implementing a peer-sampling service. The implementation are programmed in the Lua programming language, and use the Splay framework.
 
-\begin{otherlanguage}{australian}
-\printbibliography
-\end{otherlanguage}
+\section{Anti-entropy}
+
+\section{Rumor mongering}
+
+\begin{figure}[t]
+\label{fig:223-1}
+\includegraphics[scale=1]{223_1.pdf}
+\caption{Variation of the $HTL$ parameter}
+\end{figure}
+
+\begin{figure}[b]
+\label{fig:223-2}
+\includegraphics[scale=1]{223_2.pdf}
+\caption{Variation of the $F$ parameter}
+\end{figure}
+
+\section{Annexes}
+
+\subsection{Source code}
+
+%\inputminted{lua}{pss.lua}
 
 \end{document}
