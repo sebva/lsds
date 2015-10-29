@@ -9,7 +9,7 @@ set style line 5 lt 1 lc rgb "#CD00CD" lw 3 # purple
 set style line 6 lt 3 lc rgb "#000000" lw 3 # black, dashed line
 
 set output "../report/223_1_dup.pdf"
-set title "Rumor mongering"
+set title "Gossip-based dissemination, number of duplicates"
 
 # indicates the labels
 set xlabel "Time (s)"

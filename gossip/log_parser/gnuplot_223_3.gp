@@ -9,7 +9,7 @@ set style line 5 lt 1 lc rgb "#CD00CD" lw 3 # purple
 set style line 6 lt 3 lc rgb "#000000" lw 3 # black, dashed line
 
 set output "../report/223_3.pdf"
-set title "Rumor mongering"
+set title "Rumor mongering, duplicate messages"
 
 # indicates the labels
 set xlabel "Duplicates (log scale)"

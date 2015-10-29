@@ -9,7 +9,7 @@ set style line 5 lt 1 lc rgb "#CD00CD" lw 3 # purple
 set style line 6 lt 3 lc rgb "#ffa500" lw 3 # orange
 
 set output "../report/32_dupnodes.pdf"
-set title "Rumor mongering"
+set title "Peer-sampling service in application, number of duplicates"
 
 # indicates the labels
 set xlabel "Duplicates"
@@ -28,11 +28,11 @@ set yrange [0:40] # example of a closed range (points outside will not be displa
 set xrange [0:30] # example of a range closed on one side only, the max will determined automatically
 
 plot\
-"pss_disabled.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 1 title "Full nodes list",\
-"pss_h0_s0_rand.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 2 title "PSS with rand strategy",\
-"pss_h0_s0.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 3 title "PSS H=0 S=0",\
-"pss_h0_s4.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 4 title "Swapper S=4",\
-"pss_h4_s0.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 5 title "Healer H=4",\
-"pss_h2_s2.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 6 title "PSS H=2 S=2"
+"pss_disabled.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 1 title "Complete list of nodes",\
+"pss_h0_s0_rand.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 2 title "H=0 S=0, rand strategy",\
+"pss_h0_s0.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 3 title "H=0 S=0, tail strategy",\
+"pss_h0_s4.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 4 title "H=0 S=4",\
+"pss_h4_s0.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 5 title "H=4 S=0",\
+"pss_h2_s2.txt.dupnodes.plotdata" u ($1):($2) with lines linestyle 6 title "H=2 S=2"
 
 # $1 is column 1. You can do arithmetics on the values of the columns
