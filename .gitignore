@@ -293,6 +293,9 @@ sympy-plots-for-*.tex/
 # xindy
 *.xdy
 
+# endfloat
+*.fff
+
 # WinEdt
 *.bak
 *.sav
