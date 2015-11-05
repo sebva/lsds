@@ -59,7 +59,8 @@ function find_predecessor(id)
     local nn_successor = successor
     local i = 1
     log:print('Begin while')
-    while (id <= nn.id or id > nn_successor.id) and nn.id < nn_successor.id do
+    while (nn.id < nn_successor.id and (id <= nn.id or id > nn_successor.id)) or
+          (nn.id >= nn_successor.id and not ((id > nn.id and id > nn_successor.id) or (id < nn.id and id < nn_successor.id))) do
         i = i + 1
         log:print(id .. ' ' .. nn.id .. ' ' .. nn_successor.id)
         nn = nn_successor
