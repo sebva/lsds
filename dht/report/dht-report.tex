@@ -1,0 +1,111 @@
+\documentclass[11pt,a4paper]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[australian,american]{babel}
+
+%\usepackage[font=footnotesize]{subcaption}
+
+%\usepackage{amsmath}
+%\usepackage{amsfonts}
+%\usepackage{amssymb}
+\usepackage[headsepline,footsepline,automark]{scrlayer-scrpage}
+\usepackage{minted}
+%\usepackage{tabu}
+%\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{setspace}
+%\usepackage{graphicx}
+%\usepackage{pgfplots}
+\usepackage{url}
+\usepackage{titling}
+%\usepackage[backend=biber,style=ieee,bibencoding=utf8,sorting=none]{biblatex}
+\usepackage{csquotes}
+\usepackage{pdfpages}
+\usepackage[nomarkers,figuresonly]{endfloat}
+
+%\usepackage{epstopdf}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{todonotes}
+\usepackage{pdflscape}
+\usepackage[hidelinks]{hyperref}
+
+%\usepackage{enumitem}
+
+%\pgfplotsset{width=12cm,height=6cm,compat=1.11}
+
+% Constants
+\def\mytitle{Distributed Hash Tables}
+\def\myauthor{Sébastien Vaucher}
+
+\pagestyle{scrheadings}
+
+\ihead{\headmark}
+\chead{}
+\ohead{\myauthor}
+\cfoot{}
+\ifoot{Large-Scale Distributed Systems, Assignment 2}
+\ofoot{\thepage}
+
+\posttitle{\end{center}\begin{center}\LARGE Large-Scale Distributed Systems\end{center}}
+
+\author{\myauthor\\ \href{mailto:sebastien.vaucher@unine.ch}{sebastien.vaucher@unine.ch}}
+\title{\huge \textbf{\mytitle}}
+
+\hypersetup{
+	pdftitle=\mytitle,
+	pdfauthor=\myauthor
+}
+
+\renewcommand{\efloatseparator}{\mbox{}}
+
+\begin{document}
+
+\nocite{*}
+
+\begin{titlingpage}
+
+\begin{otherlanguage}{australian}
+\maketitle
+\end{otherlanguage}
+
+%\setcounter{tocdepth}{1}
+\tableofcontents
+%\listoffigures
+
+\begin{table}[b]
+\centering
+\subfloat{\includegraphics[height=1.3cm]{jmcs.png}}
+\qquad\qquad
+\subfloat{\includegraphics[height=1.5cm]{unine.pdf}}
+\end{table}
+
+\end{titlingpage}
+
+\pagebreak
+
+\section{Introduction}
+
+This report presents the results obtained in the second assignment of the Large-Scale Distributed Systems course taught at the University of Neuchâtel. The goal of the assignment is the implement a distributed hash table using the Chord algorithm. The implementation is done in the Lua programming language, using the Splay framework.
+
+Apart from this report, a number of files are supplied:
+
+\begin{description}
+\item[dht.lua]\hfill\\ Contains the entry-point of the program and the implementations of the DHT.
+\end{description}
+
+All the data presented in this report is the result of executions on the Splay cluster of the university.
+
+For a better reading comfort, all figures are disposed at the end of the document.
+
+
+
+%\begin{figure}
+%	\centering
+%	\includegraphics[width=0.93\linewidth]{223_1.pdf}
+%	\caption{Variation of the $HTL$ parameter, percentage of infected nodes over time}
+%	\label{fig:223-1}
+%\end{figure}
+
+\end{document}
