@@ -4,11 +4,6 @@ rpc = require "splay.urpc"
 -- to use TCP RPC, replace previous by the following line
 -- rpc = require"splay.rpc"
 
-function generate_id(nn)
-    local concat = nn.ip .. ':' .. nn.port
-    return tonumber(string.sub(crypto.evp.new('sha1'):digest(concat), 1, m / 4), 16)
-end
-
 -- addition to allow local run
 if not job then
     -- can NOT be required in SPLAY deployments !
@@ -28,7 +23,13 @@ rpc.server(job.me.port)
 -- constants
 max_time = 150 -- we do not want to run forever ...
 max_initial_delay = 10
-m = 32 -- size of ID in bits
+m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
+number_of_queries = 500
+
+function generate_id(nn)
+    local concat = nn.ip .. ':' .. nn.port
+    return tonumber(string.sub(crypto.evp.new('sha1'):digest(concat), 1, m / 4), 16)
+end
 
 -- variables
 n = job.me
@@ -57,17 +58,17 @@ end
 function find_predecessor(id)
     local nn = n
     local nn_successor = successor
-    local i = 1
-    log:print('Begin while')
+    local hops = 0
+    --log:print('Begin while')
     while (nn.id < nn_successor.id and (id <= nn.id or id > nn_successor.id)) or
           (nn.id >= nn_successor.id and not ((id > nn.id and id > nn_successor.id) or (id < nn.id and id < nn_successor.id))) do
-        i = i + 1
-        log:print(id .. ' ' .. nn.id .. ' ' .. nn_successor.id)
+        --log:print(id .. ' ' .. nn.id .. ' ' .. nn_successor.id)
         nn = nn_successor
         nn_successor = rpc.call(nn, {'get_successor'})
+        hops = hops + 1
     end
-    log:print('End while')
-    return nn
+    --log:print('End while')
+    return nn, hops
 end
 
 function find_successor(id)
@@ -106,6 +107,15 @@ function test()
     end
 end
 
+function do_query()
+    math.randomseed(job.position * os.time())
+    for i = 1,number_of_queries do
+        local key = math.random(0, 2 ^ m)
+        local _, hops = find_predecessor(key)
+        log:print('hops_for_query ' .. hops)
+    end
+end
+
 --
 --
 --
@@ -136,13 +146,14 @@ function main()
 
     if job.position == 1 then
         join(nil)
-        events.sleep(max_initial_delay * 3)
-        rpc.call(successor, {'test'})
     else
         local initial_partner = job.nodes()[1]
         initial_partner.id = generate_id(initial_partner)
         join(initial_partner)
     end
+
+    events.sleep(max_initial_delay * 3)
+    do_query()
 
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
