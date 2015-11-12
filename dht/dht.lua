@@ -4,8 +4,10 @@ rpc = require "splay.urpc"
 -- to use TCP RPC, replace previous by the following line
 -- rpc = require"splay.rpc"
 
+cluster = true
 -- addition to allow local run
 if not job then
+    cluster = false
     -- can NOT be required in SPLAY deployments !
     local utils = require("splay.utils")
     if #arg < 2 then
@@ -43,6 +45,14 @@ for k = 1, m do
 end
 
 --functions
+
+function first_node()
+    if cluster then
+        return job.nodes[1]
+    else
+        return job.nodes()[1]
+    end
+end
 
 function get_predecessor()
     return predecessor
@@ -199,7 +209,7 @@ function main()
     if job.position == 1 then
         join(nil)
     else
-        local initial_partner = job.nodes()[1]
+        local initial_partner = first_node()
         initial_partner.id = generate_id(initial_partner)
         join(initial_partner)
     end
