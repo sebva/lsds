@@ -25,8 +25,10 @@ rpc.server(job.me.port)
 -- constants
 max_time = 150 -- we do not want to run forever ...
 max_initial_delay = 20
+fix_finger_period = 5
+stabilize_period = 7
 m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
-number_of_queries = 500
+number_of_queries = 5
 
 function generate_id(nn)
     local concat = nn.ip .. ':' .. nn.port
@@ -87,7 +89,7 @@ end
 
 function closest_preceding_finger(id)
     for i = m, 1, -1 do
-        if in_range_oo(finger[i].node.id, n.id, id) then
+        if finger[i].node ~= nil and in_range_oo(finger[i].node.id, n.id, id) then
             return finger[i].node
         end
     end
@@ -114,59 +116,44 @@ function find_successor(id)
     return nn_successor
 end
 
-function init_finger_table(nn)
-    log:print('Node ' .. n.id .. ': init_finger_table using ' .. nn.id)
-    finger[1].node = rpc.call(nn, {'find_successor', finger[1].start})
-    predecessor = rpc.call(get_successor(), {'get_predecessor'})
-
-    for i = 1, m-1 do
-        if in_range_co(finger[i + 1].start, n.id, finger[i].node.id) then
-            finger[i + 1].node = finger[i].node
-        else
-            finger[i + 1].node = rpc.call(nn, {'find_successor', finger[i + 1].start})
-        end
-    end
-
-    log:print('Node ' .. n.id .. ': init_finger_table end')
-end
-
-function update_finger_table(s, i)
-    if finger[i].start ~= finger[i].node.id and in_range_co(s.id, finger[i].start, finger[i].node.id) then
-        finger[i].node = s
-        local p = get_predecessor()
-        rpc.call(p, {'update_finger_table', s, i})
-    end
-end
-
-function update_others()
-    rpc.call(get_successor(), {'set_predecessor', n})
-    for i = 1, m do
-        local p = find_predecessor((n.id + 1 - 2 ^(i-1)) % 2^m)
-        rpc.call(p, {'update_finger_table', n, i})
-    end
-end
-
 function join(nn)
     if nn then
-        init_finger_table(nn)
-        predecessor = rpc.call(get_successor(), {'get_predecessor'})
-        update_others()
+        predecessor = nil
+        set_successor(rpc.call(nn, {'find_successor', n.id}))
     else
-        for i = 1, m do
-            finger[i].node = n
-        end
+        set_successor(n)
         predecessor = n
     end
 end
 
+function stabilize()
+    local x = rpc.call(get_successor(), {'get_predecessor'})
+    if in_range_oo(x.id, n.id, get_successor().id) then
+        set_successor(x)
+    end
+    rpc.call(get_successor(), {'notify', n})
+    --log:print('node ' .. job.position .. ' stabilized')
+end
+
+function notify(nn)
+    if predecessor == nil or in_range_oo(nn.id, predecessor.id, n.id) then
+        predecessor = nn
+    end
+end
+
+function fix_fingers()
+    local i = math.random(2, m)
+    finger[i].node = find_successor(finger[i].start)
+    --log:print('node ' .. job.position .. ' fixed finger ' .. i)
+end
 
 thing = false
 function test()
-    if thing == false then
-        thing = true
-        log:print('Test, node ' .. job.position .. ' has ' .. get_successor().id .. ' as successor')
-        rpc.call(get_successor(), {'test'})
-    end
+    --if thing == false then
+--        thing = true
+        log:print('Test, node ' .. n.id .. ' has ' .. get_successor().id .. ' as successor')
+  --      rpc.call(get_successor(), {'test'})
+--    end
 end
 
 function do_query()
@@ -214,11 +201,20 @@ function main()
         join(initial_partner)
     end
 
-    events.sleep(max_initial_delay * 3)
-    do_query()
+    events.periodic(stabilize_period, stabilize)
+    events.periodic(fix_finger_period, fix_fingers)
+
+    --events.sleep(60)
+    --events.periodic(7, do_query)
 
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
+
+    --if job.position == 1 then
+        events.sleep(60)
+        test()
+    --end
+
 end
 
 events.thread(main)
