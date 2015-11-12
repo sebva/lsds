@@ -22,7 +22,7 @@ rpc.server(job.me.port)
 
 -- constants
 max_time = 150 -- we do not want to run forever ...
-max_initial_delay = 10
+max_initial_delay = 20
 m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
 number_of_queries = 500
 
@@ -34,8 +34,13 @@ end
 -- variables
 n = job.me
 n.id = generate_id(n)
-successor = nil
+finger = {}
 predecessor = nil
+
+-- initializer
+for k = 1, m do
+    finger[k] = { node = nil, start = (n.id + 2 ^(k-1)) % 2^m }
+end
 
 --functions
 
@@ -44,7 +49,7 @@ function get_predecessor()
 end
 
 function get_successor()
-    return successor
+    return finger[1].node
 end
 
 function set_predecessor(pred)
@@ -52,18 +57,40 @@ function set_predecessor(pred)
 end
 
 function set_successor(succ)
-    successor = succ
+    finger[1].node = succ
+end
+
+function not_in_range_oc(value, start, finish)
+    return (start < finish and (value <= start or value > finish)) or
+    (start >= finish and not ((value > start and value > finish) or (value < start and value < finish)))
+end
+
+function in_range_co(value, start, finish)
+    return (start < finish and (value >= start and value < finish)) or
+    (start >= finish and ((value >= start and value > finish) or (value < start and value < finish)))
+end
+
+function in_range_oo(value, start, finish)
+    return (start < finish and (value > start and value < finish)) or
+            (start >= finish and ((value > start and value > finish) or (value < start and value < finish)))
+end
+
+function closest_preceding_finger(id)
+    for i = m, 1, -1 do
+        if in_range_oo(finger[i].node.id, n.id, id) then
+            return finger[i].node
+        end
+    end
 end
 
 function find_predecessor(id)
     local nn = n
-    local nn_successor = successor
+    local nn_successor = get_successor()
     local hops = 0
     --log:print('Begin while')
-    while (nn.id < nn_successor.id and (id <= nn.id or id > nn_successor.id)) or
-          (nn.id >= nn_successor.id and not ((id > nn.id and id > nn_successor.id) or (id < nn.id and id < nn_successor.id))) do
+    while not_in_range_oc(id, nn.id, nn_successor.id) do
         --log:print(id .. ' ' .. nn.id .. ' ' .. nn_successor.id)
-        nn = nn_successor
+        nn = rpc.call(nn, {'closest_preceding_finger', id})
         nn_successor = rpc.call(nn, {'get_successor'})
         hops = hops + 1
     end
@@ -77,22 +104,47 @@ function find_successor(id)
     return nn_successor
 end
 
-function init_neighbors(nn)
-    log:print('Node ' .. n.id .. ': init_neighbors using ' .. nn.id)
-    local param = (n.id + 1) % (2 ^ m)
-    successor = rpc.call(nn, {'find_successor', param})
-    predecessor = rpc.call(successor, {'get_predecessor'})
-    rpc.call(successor, {'set_predecessor', n})
-    rpc.call(predecessor, {'set_successor', n})
-    log:print('Node ' .. n.id .. ': init_neighbors end')
+function init_finger_table(nn)
+    log:print('Node ' .. n.id .. ': init_finger_table using ' .. nn.id)
+    finger[1].node = rpc.call(nn, {'find_successor', finger[1].start})
+    predecessor = rpc.call(get_successor(), {'get_predecessor'})
+
+    for i = 1, m-1 do
+        if in_range_co(finger[i + 1].start, n.id, finger[i].node.id) then
+            finger[i + 1].node = finger[i].node
+        else
+            finger[i + 1].node = rpc.call(nn, {'find_successor', finger[i + 1].start})
+        end
+    end
+
+    log:print('Node ' .. n.id .. ': init_finger_table end')
+end
+
+function update_finger_table(s, i)
+    if finger[i].start ~= finger[i].node.id and in_range_co(s.id, finger[i].start, finger[i].node.id) then
+        finger[i].node = s
+        local p = get_predecessor()
+        rpc.call(p, {'update_finger_table', s, i})
+    end
+end
+
+function update_others()
+    rpc.call(get_successor(), {'set_predecessor', n})
+    for i = 1, m do
+        local p = find_predecessor((n.id + 1 - 2 ^(i-1)) % 2^m)
+        rpc.call(p, {'update_finger_table', n, i})
+    end
 end
 
 function join(nn)
     if nn then
-        init_neighbors(nn)
+        init_finger_table(nn)
+        predecessor = rpc.call(get_successor(), {'get_predecessor'})
+        update_others()
     else
-        log:print('Node ' .. n.id .. ': successor = n, predecessor = n')
-        successor = n
+        for i = 1, m do
+            finger[i].node = n
+        end
         predecessor = n
     end
 end
@@ -102,8 +154,8 @@ thing = false
 function test()
     if thing == false then
         thing = true
-        log:print('Test, node ' .. job.position .. ' has ' .. successor.id .. ' as successor')
-        rpc.call(successor, {'test'})
+        log:print('Test, node ' .. job.position .. ' has ' .. get_successor().id .. ' as successor')
+        rpc.call(get_successor(), {'test'})
     end
 end
 
