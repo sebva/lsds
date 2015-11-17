@@ -26,7 +26,7 @@ rpc.server(job.me.port)
 max_time = 150 -- we do not want to run forever ...
 max_initial_delay = 20
 fix_finger_period = 5
-stabilize_period = 7
+stabilize_period = 2
 m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
 number_of_queries = 5
 
@@ -127,8 +127,9 @@ function join(nn)
 end
 
 function stabilize()
-    local x = rpc.call(get_successor(), {'get_predecessor'})
-    if in_range_oo(x.id, n.id, get_successor().id) then
+    local succ = get_successor()
+    local x = rpc.call(succ, {'get_predecessor'})
+    if in_range_oo(x.id, n.id, succ.id) then
         set_successor(x)
     end
     rpc.call(get_successor(), {'notify', n})
@@ -149,11 +150,11 @@ end
 
 thing = false
 function test()
-    --if thing == false then
---        thing = true
+    if thing == false then
+        thing = true
         log:print('Test, node ' .. n.id .. ' has ' .. get_successor().id .. ' as successor')
-  --      rpc.call(get_successor(), {'test'})
---    end
+        rpc.call(get_successor(), {'test'})
+    end
 end
 
 function do_query()
@@ -210,10 +211,10 @@ function main()
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
 
-    --if job.position == 1 then
-        events.sleep(60)
+    if job.position == 1 then
+        events.sleep(60 - desync_wait)
         test()
-    --end
+    end
 
 end
 
