@@ -20,7 +20,7 @@ set grid x,y
 
 # set the grid on
 set xtics 5
-set ytics 100
+#set ytics 100
 #set grid xtics
 #set grid xtics ytics
 
@@ -33,12 +33,13 @@ set style fill solid border -1
 set boxwidth 1.5
 
 # set the key, options are top/bottom and left/right
-set key off
+set key top right
 
 # indicates the ranges
 set yrange [0:] # example of a closed range (points outside will not be displayed)
 set xrange [-1:] # example of a range closed on one side only, the max will determined automatically
 
-plot "task-22.plotdata" using 1:xtic(5) title "Q"
+plot "task-22.txt.plotdata" using 1:xtic(5) title "Without finger table",\
+     "task-25.txt.plotdata" using 1:xtic(5) title "With finger table"
 
 # $1 is column 1. You can do arithmetics on the values of the columns
