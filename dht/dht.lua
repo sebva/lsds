@@ -29,7 +29,6 @@ fix_finger_period = 5
 check_stale_period = 10
 test_ring_period = 40
 stabilize_period = 3
-queries_aggregation_size = 2000
 number_of_queries = 32000
 do_query_period = 5
 root_node_id = 2
@@ -137,7 +136,7 @@ function find_predecessor(id)
         hops = hops + 1
     end
     --log:print('End while')
-    if nn and nn_successor then
+    if nn and (hops == 0 or rpc.ping(nn, 4)) then
         return nn, hops
     else
         return nil, -1
@@ -146,8 +145,11 @@ end
 
 function find_successor(id)
     local nn = find_predecessor(id)
-    local nn_successor = rpc.call(nn, {'get_successor'})
-    return nn_successor
+    if nn then
+        return rpc.call(nn, {'get_successor'})
+    else
+        return nil
+    end
 end
 
 function join(nn)
@@ -204,20 +206,12 @@ function test_ring_node1()
     test_ring(counter + 1)
 end
 
-query_total_successes = 0
 function do_query()
     math.randomseed(job.position * os.time())
     for i = 1,number_of_queries do
         local key = math.random(0, 2 ^ m)
         local _, hops = find_predecessor(key)
-        if hops ~= -1 then
-            query_total_successes = query_total_successes + 1
-        end
-
-        if i % queries_aggregation_size == 0 then
-            log:print('query_successes ' .. query_total_successes)
-            query_total_successes = 0
-        end
+        log:print('hops_for_query ' .. hops)
     end
 end
 
