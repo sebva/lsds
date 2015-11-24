@@ -8,7 +8,7 @@ set style line 4 lt 1 lc rgb "#000000" lw 3 # black
 set style line 5 lt 1 lc rgb "#CD00CD" lw 3 # purple
 set style line 6 lt 3 lc rgb "#000000" lw 3 # black, dashed line
 
-set output "../report/task-22.pdf"
+set output "../report/task-34-hops.pdf"
 set title "Random queries, distribution"
 
 # indicates the labels
@@ -37,10 +37,9 @@ set key top right
 
 # indicates the ranges
 set yrange [0:] # example of a closed range (points outside will not be displayed)
-set xrange [-1:] # example of a range closed on one side only, the max will determined automatically
+set xrange [:] # example of a range closed on one side only, the max will determined automatically
 
-plot "task-22.txt.plotdata" using 1:xtic(5) title "Without finger table",\
-     "task-25.txt.plotdata" using 1:xtic(5) title "With finger table"
+plot "task-34.txt.plotdata" using 1:xtic(2) title "Under churn"
 
 
 # $1 is column 1. You can do arithmetics on the values of the columns
