@@ -29,8 +29,8 @@ fix_finger_period = 5
 check_stale_period = 10
 test_ring_period = 40
 stabilize_period = 3
-number_of_queries = 32000
-do_query_period = 5
+number_of_queries = 20
+period_between_queries = 10
 root_node_id = 2
 m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
 
@@ -212,10 +212,10 @@ function test_ring_node1()
 end
 
 function do_query()
-    events.sleep(10)
+    events.sleep(period_between_queries)
     math.randomseed(job.position * os.time())
     while true do
-        for i = 1,20 do
+        for i = 1,number_of_queries do
             local key = math.random(0, 2 ^ m)
             local _, hops = find_predecessor(key)
             log:print('hops_for_query ' .. hops)
@@ -276,7 +276,7 @@ function main()
     events.periodic(fix_finger_period, fix_fingers)
     events.periodic(check_stale_period, check_stale)
 
-    --events.thread(do_query)
+    events.thread(do_query)
 
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
