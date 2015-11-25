@@ -9,7 +9,7 @@ set style line 5 lt 1 lc rgb "#CD00CD" lw 3 # purple
 set style line 6 lt 3 lc rgb "#000000" lw 3 # black, dashed line
 
 set output "../report/task-22.pdf"
-set title "Random queries, distribution"
+set title "Hop-count distribution for random queries on 64 nodes"
 
 # indicates the labels
 set xlabel "Number of hops"
