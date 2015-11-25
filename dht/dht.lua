@@ -20,7 +20,7 @@ if not job then
 end
 
 rpc.server(job.me.port)
-rpc.settings.default_timeout = 3
+rpc.settings.default_timeout = 5
 
 -- constants
 max_time = 1200 -- we do not want to run forever ...
@@ -117,8 +117,9 @@ end
 
 function closest_preceding_finger(id)
     for i = m, 1, -1 do
-        if finger[i].node and in_range_oo(finger[i].node.id, n.id, id) and rpc.ping(finger[i].node, 1) then
-            return finger[i].node
+        local nn = finger[i].node
+        if nn and in_range_oo(nn.id, n.id, id) and rpc.ping(nn) then
+            return nn
         end
     end
 end
@@ -136,7 +137,7 @@ function find_predecessor(id)
         hops = hops + 1
     end
     --log:print('End while')
-    if nn and (hops == 0 or rpc.ping(nn, 4)) then
+    if nn then
         return nn, hops
     else
         return nil, -1
@@ -182,14 +183,18 @@ function stabilize()
 end
 
 function notify(nn)
-    if get_predecessor() == nil or in_range_oo(nn.id, predecessor.id, n.id) then
+    local pred = get_predecessor()
+    if not pred or in_range_oo(nn.id, pred.id, n.id) then
         set_predecessor(nn)
     end
 end
 
 function fix_fingers()
     local i = math.random(2, m)
-    finger[i].node = find_successor(finger[i].start)
+    local finger_node = find_successor(finger[i].start)
+    if finger_node then
+        finger[i].node = finger_node
+    end
     --log:print('node ' .. job.position .. ' fixed finger ' .. i)
 end
 
@@ -207,11 +212,15 @@ function test_ring_node1()
 end
 
 function do_query()
+    events.sleep(10)
     math.randomseed(job.position * os.time())
-    for i = 1,number_of_queries do
-        local key = math.random(0, 2 ^ m)
-        local _, hops = find_predecessor(key)
-        log:print('hops_for_query ' .. hops)
+    while true do
+        for i = 1,20 do
+            local key = math.random(0, 2 ^ m)
+            local _, hops = find_predecessor(key)
+            log:print('hops_for_query ' .. hops)
+        end
+        events.sleep(5)
     end
 end
 
@@ -265,9 +274,9 @@ function main()
 
     events.periodic(stabilize_period, stabilize)
     events.periodic(fix_finger_period, fix_fingers)
-    --events.periodic(check_stale_period, check_stale)
+    events.periodic(check_stale_period, check_stale)
 
-    events.periodic(do_query_period, do_query)
+    --events.thread(do_query)
 
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
