@@ -31,7 +31,6 @@ S = 2
 SEL = 'rand'
 ACTIVE_INTERVAL = 5
 VIEW_OUTPUT_INTERVAL = 20
-MAX_TIME = 120
 
 function get_n_peers(n)
     local ret = {}
@@ -45,6 +44,21 @@ function get_n_peers(n)
     end
     return ret
 end
+
+-- Bypass PSS
+--function get_n_peers(n)
+--    local ret = {}
+--    local peers = misc.random_pick(all_nodes(), n)
+--
+--    local log_out = 'n_peers'
+--    for k, v in ipairs(peers) do
+--        v.id = generate_id(v)
+--        log_out = log_out .. ' ' .. v.id
+--        table.insert(ret, v)
+--    end
+--    --log:print(log_out)
+--    return ret
+--end
 
 function select_partner()
     if SEL == 'rand' then
@@ -211,12 +225,6 @@ function select_f_from_i(f, i)
 
     return r
     ]]
-end
-
-function terminator()
-    events.sleep(MAX_TIME)
-    log:print("FINAL: node "..job.position)
-    os.exit()
 end
 
 function pss_main()

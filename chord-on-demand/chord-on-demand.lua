@@ -1,4 +1,5 @@
 require "splay.base"
+require "crypto"
 rpc = require "splay.urpc"
 -- to use TCP RPC, replace previous by the following line
 -- rpc = require"splay.rpc"
@@ -19,15 +20,16 @@ if not job then
 end
 
 rpc.server(job.me.port)
-rpc.settings.default_timeout = 20
+rpc.settings.default_timeout = 30
 
 -- constants
-root_node_id = 0
-max_initial_delay = 20
-max_time = 1200
+root_node_id = 1
+max_initial_delay = 4
+max_time = 240
 tman_view_size = 5
-tman_intercycle_wait = 5
-tman_cycles = 10
+tman_intercycle_wait = 2
+tman_cycles = 5
+number_of_queries = 1000
 m = 28 -- size of ID in bits. max 30, as Lua's math.random goes up to 2^31 -1 only
 
 function generate_id(nn)
@@ -40,7 +42,7 @@ n = job.me
 n.id = generate_id(n)
 finger = {}
 predecessor = nil
-tman_view = nil
+tman_view = {}
 tman_lock = events.lock()
 
 -- initializer
@@ -82,18 +84,30 @@ function all_nodes()
     end
 end
 
-function id_comparator(a, b)
+function id_dist_comparator(a, b)
     return dist(n.id, a.id) < dist(n.id, b.id)
 end
 
+function id_asc_comparator(a, b)
+    return a.id < b.id
+end
+
 function dist(a, b)
-    return math.min(math.abs(a - b), (2 ^ m -1) - math.abs(a - b))
+    return math.min(math.abs(a - b), (2 ^ m) - math.abs(a - b))
 end
 
 function select_peer()
-    table.sort(tman_view, id_comparator)
+    -- Work on copy to lock briefly
+    local temp = {}
+    tman_lock:lock()
     for key, value in ipairs(tman_view) do
-        if rpc.ping(value) then
+        table.insert(temp, value)
+    end
+    tman_lock:unlock()
+
+    table.sort(temp, id_dist_comparator)
+    for key, value in ipairs(temp) do
+        if rpc.ping(value, 3) then
             return value
         end
     end
@@ -102,40 +116,38 @@ function select_peer()
 end
 
 function select_view(buffer)
-    -- Remove duplicates
-    local to_remove = {}
-    for i = 1, #buffer - 1 do
-        for j = i + 1, #buffer do
-            if buffer[i].id == buffer[j].id then
-                table.insert(to_remove, i)
+    -- Remove duplicates and n
+    local buffer_nodup = {}
+    local current_id = -1
+    table.sort(buffer, id_asc_comparator)
+    for key, value in ipairs(buffer) do
+        if value.id > current_id then
+            current_id = value.id
+            if value.id ~= n.id then
+                table.insert(buffer_nodup, value)
             end
         end
     end
 
-    -- Iterate in reverse, this way indices don't change
-    table.sort(to_remove, desc_comp)
-    for k, v in ipairs(to_remove) do
-        table.remove(buffer, v)
+    -- Trim end of array (less interesting elements)
+    table.sort(buffer_nodup, id_dist_comparator)
+    for i = #buffer_nodup, tman_view_size + 1, -1 do
+        table.remove(buffer_nodup, i)
     end
 
-    table.sort(buffer, id_comparator)
-    local buffer2 = {}
-
-    local i = 1
-    while #buffer2 < tman_view_size and i <= #buffer do
-        if buffer[i].id ~= n.id then
-            table.insert(buffer2, buffer[i])
-        end
-        i = i + 1
-    end
-    tman_view = buffer2
+    tman_lock:lock()
+    tman_view = buffer_nodup
+    tman_lock:unlock()
 end
 
 function get_initial_buffer()
     local buffer = {}
+    tman_lock:lock()
     for key, value in ipairs(tman_view) do
         table.insert(buffer, value)
     end
+    tman_lock:unlock()
+
     table.insert(buffer, n)
     local pss_sample = get_n_peers(5)
     for key, value in ipairs(pss_sample) do
@@ -146,10 +158,8 @@ end
 
 function tman_active_thread()
     --log:print('active')
-    tman_lock:lock()
     local p = select_peer()
     local buffer = get_initial_buffer()
-    tman_lock:unlock()
 
     local buffer_p = rpc.call(p, {'tman_passive_thread', buffer})
     buffer = {}
@@ -158,29 +168,30 @@ function tman_active_thread()
     for key, value in ipairs(tman_view) do
         table.insert(buffer, value)
     end
+    tman_lock:unlock()
     for key, value in ipairs(buffer_p) do
         table.insert(buffer, value)
     end
 
     select_view(buffer)
-    tman_lock:unlock()
     --log:print('active end')
 end
 
 function tman_passive_thread(buffer_q)
     --log:print('passive')
-    tman_lock:lock()
     local buffer = get_initial_buffer()
 
     local buffer2 = {}
+    tman_lock:lock()
     for key, value in ipairs(tman_view) do
         table.insert(buffer2, value)
     end
+    tman_lock:unlock()
+
     for key, value in ipairs(buffer_q) do
         table.insert(buffer2, value)
     end
     select_view(buffer2)
-    tman_lock:unlock()
     --log:print('passive end')
     return buffer
 end
@@ -308,13 +319,52 @@ function fix_fingers()
 end
 
 function tman_output()
-    local log_line = 'TMAN ' .. node_id
+    local log_line = 'TMAN ' .. n.id
     tman_lock:lock();
     for k, v in ipairs(tman_view) do
         log_line = log_line .. ' ' .. v.id
     end
     tman_lock:unlock();
     log:print(log_line)
+end
+
+function tman_bootstrap_chord()
+    log:print('Bootstrapping ' .. n.id)
+    local nodes = {n}
+    tman_lock:lock()
+    for key, value in ipairs(tman_view) do
+        table.insert(nodes, value)
+    end
+    tman_lock:unlock()
+
+    table.sort(nodes, id_asc_comparator)
+
+    -- Find our node in the array
+    local i = 1
+    while i <= #nodes and nodes[i].id ~= n.id do
+        i = i + 1
+    end
+
+    -- We are at i, so successor is at i+1 and predecessor at i-1 (circular)
+    local pred_key = i - 1
+    if pred_key < 1 then pred_key = #nodes end
+    local succ_key = i + 1
+    if succ_key > #nodes then succ_key = 1 end
+
+    set_predecessor(nodes[pred_key])
+    set_successor(nodes[succ_key])
+end
+
+function do_query()
+    for i = 1,number_of_queries do
+        local key = math.random(0, 2 ^ m)
+        local _, hops = find_predecessor(key)
+        log:print('hops_for_query ' .. hops)
+    end
+end
+
+function check_ring()
+    log:print('check_ring ' .. n.id .. ' ' .. get_successor().id)
 end
 
 --
@@ -346,11 +396,7 @@ function main()
     -- this thread will be in charge of killing the node after max_time seconds
     events.thread(terminator)
 
-    tman_lock:lock()
-    tman_view = get_n_peers(tman_view_size)
-    tman_lock:unlock()
-
-    events.sleep(30)
+    events.sleep(10)
 
     tman_lock:lock()
     tman_view = get_n_peers(tman_view_size)
@@ -362,6 +408,14 @@ function main()
         tman_output()
     end
 
+    events.sleep(tman_intercycle_wait)
+    tman_bootstrap_chord()
+    events.sleep(tman_intercycle_wait)
+
+    check_ring()
+
+    events.sleep(tman_intercycle_wait)
+    --events.thread(do_query)
 end
 
 require"pss"
