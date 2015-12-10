@@ -41,9 +41,11 @@ end
 n = job.me
 n.id = generate_id(n)
 finger = {}
+successors = {}
 predecessor = nil
 tman_view = {}
 tman_lock = events.lock()
+successors_lock = events.lock()
 
 -- initializer
 for k = 1, m do
@@ -201,7 +203,7 @@ function get_predecessor()
 end
 
 function get_successor()
-    return finger[1].node
+    return successors[1]
 end
 
 function set_predecessor(pred)
@@ -212,9 +214,12 @@ function set_predecessor(pred)
     end
 end
 
-function set_successor(succ)
+function add_successor(succ)
     if succ then
-        finger[1].node = succ
+        successors_lock:lock()
+        table.insert(successors, succ)
+        table.sort(successors, id_dist_comparator)
+        successors_lock:unlock()
     else
         log:print("Attempting to set successor to nil, ignoring")
     end
@@ -283,9 +288,9 @@ function join(nn)
                 events.sleep(2)
             end
         end
-        set_successor(succ)
+        add_successor(succ)
     else
-        set_successor(n)
+        add_successor(n)
         set_predecessor(n)
     end
 end
@@ -296,7 +301,7 @@ function stabilize()
         local x = rpc.call(succ, {'get_predecessor'})
         if x and in_range_oo(x.id, n.id, succ.id) then
             succ = x
-            set_successor(x)
+            add_successor(x)
         end
         rpc.call(succ, {'notify', n})
     end
@@ -340,19 +345,26 @@ function tman_bootstrap_chord()
     table.sort(nodes, id_asc_comparator)
 
     -- Find our node in the array
-    local i = 1
-    while i <= #nodes and nodes[i].id ~= n.id do
-        i = i + 1
+    local n_index = 1
+    while n_index <= #nodes and nodes[n_index].id ~= n.id do
+        n_index = n_index + 1
     end
 
     -- We are at i, so successor is at i+1 and predecessor at i-1 (circular)
-    local pred_key = i - 1
+    local pred_key = n_index - 1
     if pred_key < 1 then pred_key = #nodes end
-    local succ_key = i + 1
+    local succ_key = n_index + 1
     if succ_key > #nodes then succ_key = 1 end
 
     set_predecessor(nodes[pred_key])
-    set_successor(nodes[succ_key])
+    add_successor(nodes[succ_key])
+    -- Scan the whole range, anything in the successor half of the ring is a successor
+    for i = 1, #nodes do
+        -- oo so n is not included
+        if i ~= succ_key and in_range_oo(nodes[i].id, n.id, n.id + (2 ^ (m-1))) then
+            add_successor(nodes[i])
+        end
+    end
 end
 
 function do_query()
@@ -364,7 +376,13 @@ function do_query()
 end
 
 function check_ring()
-    log:print('check_ring ' .. n.id .. ' ' .. get_successor().id)
+    successors_lock:lock()
+    local log_out = 'check_ring ' .. n.id
+    for key, value in ipairs(successors) do
+        log_out = log_out .. ' ' .. value.id
+    end
+    log:print(log_out)
+    successors_lock:unlock()
 end
 
 --
