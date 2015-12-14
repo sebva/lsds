@@ -46,6 +46,7 @@ predecessor = nil
 tman_view = {}
 tman_lock = events.lock()
 successors_lock = events.lock()
+dist_sort_subject = n.id
 
 -- initializer
 for k = 1, m do
@@ -87,7 +88,7 @@ function all_nodes()
 end
 
 function id_dist_comparator(a, b)
-    return dist(n.id, a.id) < dist(n.id, b.id)
+    return dist(dist_sort_subject, a.id) < dist(dist_sort_subject, b.id)
 end
 
 function id_asc_comparator(a, b)
@@ -107,6 +108,7 @@ function select_peer()
     end
     tman_lock:unlock()
 
+    dist_sort_subject = n.id
     table.sort(temp, id_dist_comparator)
     for key, value in ipairs(temp) do
         if rpc.ping(value, 3) then
@@ -115,6 +117,18 @@ function select_peer()
     end
     log:print("All nodes in tman_view are dead")
     return nil
+end
+
+function select_fingers(buffer)
+    for i = 2, m do
+        dist_sort_subject = finger[i].start
+        table.sort(buffer, id_dist_comparator)
+
+        -- Do not throw away a better finger
+        if finger[i].node == nil or dist(finger[i].start, buffer[1].id) < dist(finger[i].start, finger[i].node.id) then
+            finger[i].node = buffer[1]
+        end
+    end
 end
 
 function select_view(buffer)
@@ -131,10 +145,34 @@ function select_view(buffer)
         end
     end
 
+    select_fingers(buffer_nodup)
+
+    -- Guarantee that the immediate successor is always in the list
+    table.insert(buffer_nodup, n)
+    table.sort(buffer_nodup, id_asc_comparator)
+    local i = 1
+    while buffer_nodup[i].id ~= n.id do
+        i = i + 1
+    end
+    local must_keep_index = i + 1
+    if must_keep_index > #buffer_nodup then must_keep_index = 1 end
+    local must_keep_node = buffer_nodup[must_keep_index]
+    table.remove(buffer_nodup, i)
+
     -- Trim end of array (less interesting elements)
+    dist_sort_subject = n.id
     table.sort(buffer_nodup, id_dist_comparator)
+    local must_keep_removed = false
     for i = #buffer_nodup, tman_view_size + 1, -1 do
+        if buffer_nodup[i].id == must_keep_node.id then
+            must_keep_removed = true
+        end
         table.remove(buffer_nodup, i)
+    end
+
+    if must_keep_removed then
+        table.remove(buffer_nodup, #buffer_nodup)
+        table.insert(buffer_nodup, must_keep_node)
     end
 
     tman_lock:lock()
@@ -218,7 +256,9 @@ function add_successor(succ)
     if succ then
         successors_lock:lock()
         table.insert(successors, succ)
+        dist_sort_subject = n.id
         table.sort(successors, id_dist_comparator)
+        finger[1].node = successors[1]
         successors_lock:unlock()
     else
         log:print("Attempting to set successor to nil, ignoring")
@@ -357,6 +397,10 @@ function tman_bootstrap_chord()
     if succ_key > #nodes then succ_key = 1 end
 
     set_predecessor(nodes[pred_key])
+    successors_lock:lock()
+    successors = {}
+    successors_lock:unlock()
+
     add_successor(nodes[succ_key])
     -- Scan the whole range, anything in the successor half of the ring is a successor
     for i = 1, #nodes do
@@ -375,11 +419,15 @@ function do_query()
     end
 end
 
-function check_ring()
+function check_ring(seq)
     successors_lock:lock()
-    local log_out = 'check_ring ' .. n.id
+    local log_out = 'check_ring ' .. seq .. ' ' .. n.id
     for key, value in ipairs(successors) do
         log_out = log_out .. ' ' .. value.id
+    end
+    log_out = log_out .. "\nfingers " .. seq .. ' ' .. n.id
+    for key, value in ipairs(finger) do
+        log_out = log_out .. ' ' .. value.start .. ':' .. value.node.id
     end
     log:print(log_out)
     successors_lock:unlock()
@@ -424,15 +472,10 @@ function main()
         events.sleep(tman_intercycle_wait)
         tman_active_thread()
         tman_output()
+        tman_bootstrap_chord()
+        check_ring(i)
     end
 
-    events.sleep(tman_intercycle_wait)
-    tman_bootstrap_chord()
-    events.sleep(tman_intercycle_wait)
-
-    check_ring()
-
-    events.sleep(tman_intercycle_wait)
     --events.thread(do_query)
 end
 
