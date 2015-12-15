@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import re
 from subprocess import check_output
@@ -17,7 +18,7 @@ def ring_plot(file_handle, ideal_ring):
         check_ring_lines = sorted([parse_check_ring_line(x) for x in file_handle if re.match(".*check_ring %d .*" % i, x)], key=lambda a: a[0])
         success = sum([1 for i in range(len(check_ring_lines)) if check_ring_lines[i][1] == ideal_ring[(i+1) % len(ideal_ring)]])
 
-        print(success)
+        print("%d\t%d" % (i, success))
 
 
 def compute_ideal_ring():
@@ -28,3 +29,4 @@ def compute_ideal_ring():
 if __name__ == '__main__':
     with open('bootstrap.txt') as file_handle:
         ring_plot(file_handle, compute_ideal_ring())
+
