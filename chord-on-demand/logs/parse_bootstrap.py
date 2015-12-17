@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
+import sys
 from subprocess import check_output
 
 tman_iterations = 20
@@ -21,12 +22,13 @@ def ring_plot(file_handle, ideal_ring):
         print("%d\t%d" % (i, success))
 
 
-def compute_ideal_ring():
-    all_nodes = check_output(r"grep 'check_ring 1 ' bootstrap.txt | sed -r 's/.*check_ring 1 ([0-9]+).*/\1/g' | sort -n | uniq", shell=True)
+def compute_ideal_ring(filename):
+    all_nodes = check_output(r"grep 'check_ring 1 ' " + filename + r" | sed -r 's/.*check_ring 1 ([0-9]+).*/\1/g' | sort -n | uniq", shell=True)
     return [int(x) for x in all_nodes.decode('utf-8').split("\n") if x]
 
 
 if __name__ == '__main__':
-    with open('bootstrap.txt') as file_handle:
-        ring_plot(file_handle, compute_ideal_ring())
+    filename = sys.argv[1]
+    with open(filename) as file_handle:
+        ring_plot(file_handle, compute_ideal_ring(filename))
 

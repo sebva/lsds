@@ -8,7 +8,7 @@ my $distance_sum_for_period = 0;
 my $amount_for_period = 0;
 my $ref_time = -1;
 my $period_counter = 1;
-my $CHECK_STALE_PERIOD = 5; # Adapt to value in the lua script
+my $CHECK_STALE_PERIOD = 15; # Adapt to value in the lua script
 my $m = 28;
 
 
